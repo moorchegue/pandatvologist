@@ -7,6 +7,8 @@
 // @version     0.1.0
 // ==/UserScript==
 
+var FOOTER_CONTAINER_CLASS = 'room-foot-hostinfo-container';
+
 var recollection_timeout = 5000;
 var stats = [];
 
@@ -14,9 +16,12 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function getContainer(container_name) {
+    return document.getElementsByClassName(container_name)[0];
+}
+
 function getNumByContainer(container_name) {
-    var container = document.getElementsByClassName(container_name)[0];
-    return container.getElementsByClassName('num')[0];
+    return getContainer(container_name).getElementsByClassName('num')[0];
 }
 
 function getBamboo() {
@@ -89,20 +94,25 @@ function updateDownloadLink(args) {
         old_link.remove();
     }
 
-    var footer = document.getElementsByClassName('room-foot-hostinfo-container')[0];
+    var footer = getContainer(FOOTER_CONTAINER_CLASS);
     footer.appendChild(link);
 }
 
 async function collectStats() {
     while (true) {
+        await sleep(recollection_timeout);
+
+        // HACK Firefox never calls `load` event on a live panda.tv broadcast
+        if (!getContainer(FOOTER_CONTAINER_CLASS)) {
+            continue;
+        }
+
         var cs = collectCurrentStats();
         console.log(cs);
         stats.push(cs);
+
         updateDownloadLink({stats: stats});
-        await sleep(recollection_timeout);
     }
 }
 
-window.addEventListener('load', function() {
-    collectStats();
-}, false);
+collectStats();
