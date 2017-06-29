@@ -4,13 +4,13 @@
 // @description Panda.tv channel stats (viewers and virtual revenue) collector
 // @homepage    http://github.com/moorchegue/pandatvologist
 // @match       *://*.panda.tv/*
-// @version     0.1.0
+// @version     0.2.0
 // ==/UserScript==
 
 var FOOTER_CONTAINER_CLASS = 'room-foot-hostinfo-container';
 
 var recollection_timeout = 5000;
-var stats = [];
+
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -78,18 +78,15 @@ function updateDownloadLink(args) {
         csv = 'data:text/csv;charset=utf-8,' + csv;
     }
     var data = encodeURI(csv);
-    var channel = window.location.href.split('/').pop();
-    var today = new Date().toJSON().split('T')[0];
-    var link_id = 'panda-' + channel + '-' + today;
     var link = document.createElement('a');
-    link.setAttribute('id', link_id);
+    link.setAttribute('id', args.key);
     link.setAttribute('href', data);
-    link.setAttribute('download', link_id + ".csv");
-    link.innerHTML = link_id;
+    link.setAttribute('download', args.key + ".csv");
+    link.innerHTML = args.key;
 
     console.log(link);
 
-    var old_link = document.getElementById(link_id);
+    var old_link = document.getElementById(args.key);
     if (old_link) {
         old_link.remove();
     }
@@ -98,7 +95,21 @@ function updateDownloadLink(args) {
     footer.appendChild(link);
 }
 
+function getFromLocalStore(key) {
+    return JSON.parse(localStorage.getItem(key)) || [];
+}
+
+function addToLocalStorage(key, data) {
+    var stored = getFromLocalStore(key);
+    stored.push(data);
+    localStorage.setItem(key, JSON.stringify(stored));
+    return stored;
+}
+
 async function collectStats() {
+    var channel = window.location.href.split('/').pop();
+    var key = 'panda-' + channel;
+
     while (true) {
         await sleep(recollection_timeout);
 
@@ -109,9 +120,12 @@ async function collectStats() {
 
         var cs = collectCurrentStats();
         console.log(cs);
-        stats.push(cs);
+        var channel_stats = addToLocalStorage(key, cs);
 
-        updateDownloadLink({stats: stats});
+        updateDownloadLink({
+            stats: channel_stats,
+            key: key,
+        });
     }
 }
 
